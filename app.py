@@ -9,11 +9,8 @@ import base64
 import threading
 
 def autoplay_audio(audio_bytes):
-    # Assuming audio_bytes is an io.BytesIO object containing MP3 data
     audio = AudioSegment.from_file(audio_bytes, format="mp3")
     audio_length = len(audio) / 1000.0
-
-    # Convert io.BytesIO back to bytes for embedding in HTML
     b64 = base64.b64encode(audio_bytes.getvalue()).decode()
     audio_html = f"""
     <audio autoplay="true">
@@ -28,7 +25,7 @@ def autoplay_audio(audio_bytes):
 
 
 def handle_text_input(user_input):
-    response_data = chat(user_input)
+    response_data = chat(user_input,"testuser_streamlit","session1")
     if response_data[0]:
         st.write(f"{response_data[1]} : {response_data[0]}")
         audio_1,_=response_data[2]

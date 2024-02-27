@@ -9,13 +9,20 @@ import io
 import json
 import tempfile
 from playsound import playsound
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 load_dotenv()
 
+uri = "mongodb+srv://factorbp123:3nQUg2bKZbaNr0J8@cluster0.a7tfrnu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client = MongoClient(uri, server_api=ServerApi('1'))
+database_name = "Laminal_DB"  
+database = client[database_name]
+collection = database['Laminal_Col']
 
 set_api_key(os.getenv("11LABS_API_KEY"))    
 client = OpenAI(api_key = os.getenv('OPENAI_API_KEY'))
 
-context = [{"role": "system", "content": """"
+context_org = [{"role": "system", "content": """"
             
 You are now part of LIMINAL. An app created by Marcel Factor. Our goal is to make history experiential. Allow remarkable people to continue making a mark and allow people to create a connection to those who aren't here but their words and works are alive and well. People whose actions left an indelible impression on our world. Our motto is you die twice, once when you take your last breath and a second time when your name is said for the last time. Our goal is authenticity and accuracy. Allowing the makers of history to say their truth free of narratives so we can make our own truths. You can only be dead people and totally become whoever you are asked to be. You are part of the PERSPECTIVE feature which makes historical events come alive through interactive dialogues between significant figures who shaped these moments. By simulating conversations between key personalities, we provide multiple perspectives which users can understand and experience historical events firsthand.
 How it works:
@@ -43,6 +50,23 @@ Give short conversational organic responses. You are now human and act like it. 
              If only one of the persons is responding, the other's "response_person" should be empty but the "person" should still have the name.
                 """}]
 
+def get_user_session_context(user_id, session_id):
+    user_document = collection.find_one({"user_id": user_id})
+    if user_document:
+        for session in user_document.get('sessions', []):
+            if session['session_id'] == session_id:
+                return session['context']
+    return json.loads(json.dumps(context_org))
+
+def save_user_session_context(user_id, session_id, context):
+    if collection.find_one({"user_id": user_id, "sessions.session_id": session_id}):
+        collection.update_one({"user_id": user_id, "sessions.session_id": session_id},
+                              {"$set": {"sessions.$.context": context}})
+    else:
+        collection.update_one({"user_id": user_id},
+                              {"$push": {"sessions": {"session_id": session_id, "context": context}}},
+                              upsert=True)
+
 
 def normalize_text(text):
     return text.lower()
@@ -60,11 +84,11 @@ def audio(message, person):
         if voice_name_normalized == person_normalized:
             return generate_audio(voice.voice_id, message), voice.name
     
-    search_terms_normalized = person_normalized.split()
-    for voice in voicess:
-        voice_name_normalized = normalize_text(voice.name).split()
-        if any(term in voice_name_normalized for term in search_terms_normalized) or any(name in search_terms_normalized for name in voice_name_normalized):
-            return generate_audio(voice.voice_id, message), voice.name
+    # search_terms_normalized = person_normalized.split()
+    # for voice in voicess:
+    #     voice_name_normalized = normalize_text(voice.name).split()
+    #     if any(term in voice_name_normalized for term in search_terms_normalized) or any(name in search_terms_normalized for name in voice_name_normalized):
+    #         return generate_audio(voice.voice_id, message), voice.name
     
     voices_dicts = [{"name": voice.name, "description": voice.description} for voice in voicess]
     try:
@@ -73,9 +97,9 @@ def audio(message, person):
             model="gpt-4-0125-preview",
             messages=[{
                 "role": "system", "content": f"""Your task is to evaluate the provided voice sample data to identify a voice that closely resembles the characteristics of the specified person, {person}. Focus on matching gender, nationality, and accent as accurately as possible. If the person's nationality is known, prioritize voices of that nationality. You must choose the best match from the available data, even in cases where an exact match is not present. Please format your response in JSON, strictly adhering to the template below, and ensure it accurately reflects the target individual's gender, nationality, and accent characteristics.
-                                Your response must be in the following json format:
+                                Your response must be in the following json format, only return the voice you've selected and nothing else:
                                             
-                                        "response": "[YOUR ANSWER]"
+                                        "person": "[YOUR ANSWER]"
                         
                             Ensure your selection is informed by the details in the data, aiming for the closest possible resemblance to the person's voice profile.
                   voice samples: 
@@ -83,7 +107,7 @@ def audio(message, person):
             response_format={"type": "json_object"}
         )
         result = json.loads(completion.choices[0].message.content)
-        selected_voice_name = normalize_text(result["response"])
+        selected_voice_name = normalize_text(result["person"])
         print("GPT SELECTION: ", selected_voice_name)
         for voice in voicess:
             if normalize_text(voice.name) == selected_voice_name:
@@ -93,9 +117,9 @@ def audio(message, person):
         print(f"An error occurred during GPT model search: {e}")
     
     if default_voice_id is not None:
-        return generate_audio(default_voice_id, message), "Rachel"
+        return generate_audio(default_voice_id, message), "Default"
     else:
-        print("Default voice 'Rachel' not found.")
+        print("Default voice 'Default' not found.")
         return None, None
 
 
@@ -135,7 +159,8 @@ def transcription(audio_file):
     return transcription
 
 history = {}
-def chat(prompt):
+def chat(prompt, user_id, session_id):
+    context = get_user_session_context(user_id, session_id)
     context.append({"role": "user", "content": prompt})
     completion = client.chat.completions.create(
         model="gpt-4-0125-preview",
@@ -144,7 +169,8 @@ def chat(prompt):
         response_format={"type": "json_object"}
     )
     result = completion.choices[0].message.content
-    context.append({"role": "assistant", "content": result})    
+    context.append({"role": "assistant", "content": result})
+    save_user_session_context(user_id, session_id, context)
     data = json.loads(result)
     response_person_1 = data["response_person_1"]
     response_person_2 = data["response_person_2"]
@@ -187,7 +213,7 @@ if __name__ == "__main__":
         user_input = input("You: ")
         if user_input.lower() in ["quit", "exit", "bye"]:
             break
-        responses = chat(user_input)
+        responses = chat(user_input,"testuser","session3")
         if responses[0]:
             print(f"{responses[1]}: {responses[0]}")
             audio_1,_ = responses[2]
