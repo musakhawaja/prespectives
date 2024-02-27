@@ -11,13 +11,14 @@ import tempfile
 from playsound import playsound
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+
 load_dotenv()
 
 uri = "mongodb+srv://factorbp123:3nQUg2bKZbaNr0J8@cluster0.a7tfrnu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(uri, server_api=ServerApi('1'))
 database_name = "Laminal_DB"  
 database = client[database_name]
-collection = database['Laminal_Col']
+collection = database['Liminal_Prespective']
 
 set_api_key(os.getenv("11LABS_API_KEY"))    
 client = OpenAI(api_key = os.getenv('OPENAI_API_KEY'))
@@ -69,7 +70,10 @@ def save_user_session_context(user_id, session_id, context):
 
 
 def normalize_text(text):
-    return text.lower()
+    text = text.lower()
+    text = text.strip()
+    text = " ".join(text.split())
+    return text
 
 def audio(message, person):
     voicess = voices()  

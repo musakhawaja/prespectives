@@ -25,7 +25,7 @@ def autoplay_audio(audio_bytes):
 
 
 def handle_text_input(user_input):
-    response_data = chat(user_input,"testuser_streamlit","session1")
+    response_data = chat(user_input,"testuser_streamlit","session2")
     if response_data[0]:
         st.write(f"{response_data[1]} : {response_data[0]}")
         audio_1,_=response_data[2]
