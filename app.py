@@ -30,7 +30,7 @@ def handle_text_input(user_input):
         st.write(f"{response_data[1]} : {response_data[0]}")
         audio_1,_=response_data[2]
         autoplay_audio(audio_1)
-    if response_data[3]:
+    if len(response_data)>3:
         st.write(f"{response_data[4]} : {response_data[3]}")
         audio_2, _ = response_data[5]
         autoplay_audio(audio_2)   
