@@ -23,7 +23,7 @@ def autoplay_audio(audio_bytes):
     sound = st.empty()
     sound.markdown(audio_html, unsafe_allow_html=True)
 
-    time.sleep(audio_length + 1)
+    time.sleep(audio_length + 2)
     sound.empty()
 
 

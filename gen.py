@@ -147,10 +147,12 @@ def chat(prompt):
     responses=[]    
     if data.get("person_1"):
         if person_1 in history:
-            gen_audio_1, _ = audio(response_person_1, history[person_1])
+            gen_audio_1, test = audio(response_person_1, history[person_1])
+            print(test)
         else:
             gen_audio_1, person1 = audio(response_person_1, person_1)
             history[person_1] = person1
+            print(person1)
         responses.append(response_person_1)
         responses.append(person_1)
         responses.append(gen_audio_1)
@@ -161,6 +163,7 @@ def chat(prompt):
         else:
             gen_audio_2, person2 = audio(response_person_2, person_2)
             history[person_2] = person2
+            print(person2)
         
         responses.append(response_person_2)
         responses.append(person_2)
