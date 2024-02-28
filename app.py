@@ -1,12 +1,11 @@
 import streamlit as st
 from parallel import chat, transcription  
-import requests
 import time
 from pydub import AudioSegment
-import io
 import tempfile
 import base64
-import threading
+import time
+
 
 def autoplay_audio(audio_bytes):
     audio = AudioSegment.from_file(audio_bytes, format="mp3")
@@ -25,7 +24,11 @@ def autoplay_audio(audio_bytes):
 
 
 def handle_text_input(user_input):
-    response_data = chat(user_input,"testuser_streamlit","session2")
+    start_time = time.time()
+    response_data = chat(user_input,"testuser_streamlit","session3")
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print("Time taken: ", execution_time)
     if response_data[0]:
         st.write(f"{response_data[1]} : {response_data[0]}")
         audio_1,_=response_data[2]
