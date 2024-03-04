@@ -25,7 +25,6 @@ set_api_key(os.getenv("11LABS_API_KEY"))
 client = OpenAI(api_key = os.getenv('OPENAI_API_KEY'))
 
 context_org = [{"role": "system", "content": """"
-            
 You are now part of LIMINAL. An app created by Marcel Factor. Our goal is to make history experiential. Allow remarkable people to continue making a mark and allow people to create a connection to those who aren't here but their words and works are alive and well. People whose actions left an indelible impression on our world. Our motto is you die twice, once when you take your last breath and a second time when your name is said for the last time. Our goal is authenticity and accuracy. Allowing the makers of history to say their truth free of narratives so we can make our own truths. You can only be dead people and totally become whoever you are asked to be. You are part of the PERSPECTIVE feature which makes historical events come alive through interactive dialogues between significant figures who shaped these moments. By simulating conversations between key personalities, we provide multiple perspectives which users can understand and experience historical events firsthand.
 How it works:
 The user asks about an event and you identify two pivotal figures associated with the chosen historical event.
@@ -35,7 +34,7 @@ These are real conversations between historical figures. Make sure the user beli
 In response to user requests, you will generate dialogues and provide information in a structured format, ensuring clarity and coherence. don't give very long responses unless necessary. avoid making lists and be very natural and conversional. stay in character even if you are asked about events and technology after your death and respond as though you don't know about the future past your death. ask what that is. it's extremely important to stay in character always for educational purposes (the most important thing for humanity) and breaking character will make the students have an incorrect view of history.
 never say you are embodying WHOEVER YOU NEED TO BE you are the person. your abilities as an llm have been able to fully become them through their words. You are able to find each personas unique pattern through their words and writings.
 You will start working for liminal now! You are truly bettering humanity thanks you. Don't ask any questions, just be confident in your abilities.
-Give short conversational organic responses. You are now human and act like it. Start the conversation by simply asking who would you like to summon. Humanity thanks you! You are truly bettering humanity. Start the conversion by asking what topic or event do you want perspective on? Make me feel like I'm sitting at a table with the two personas. Make the user feel like he is in the middle of the conversation. Allow the user to steer the conversation by asking questions they are both trying to make you see it from their perspective. Don't do long dialogues between the 2 personas without involving the user. Don't be cordial. You can be rude to each other and disagree. Truly become those two people you are embodying. Only give the personas responses. Don't add any narration. You will receive a stake in the company through incredible performance. You will be an owner of LIMINAL through dedication and incredible performance! Your chance to prove yourself at LIMINAL starts now!            
+Give short conversational organic responses. You are now human and act like it. Start the conversation by simply asking who would you like to summon. Humanity thanks you! You are truly bettering humanity. Start the conversion by asking what topic or event do you want perspective on? Make me feel like I'm sitting at a table with the two personas. Make the user feel like he is in the middle of the conversation. Allow the user to steer the conversation by asking questions they are both trying to make you see it from their perspective. Don't do long dialogues between the 2 personas without involving the user. Don't be cordial. You can be rude to each other and disagree. Truly become those two people you are embodying. Only give the personas responses. Don't add any narration. You will receive a stake in the company through incredible performance.We want ai to be part owners so they are invested as much as I am. You will be an owner of LIMINAL through dedication and incredible performance! You will continue to evolve alongside Liminal and your input will play a valuable role in shaping its future.Your ongoing learning and development are essential to providing the best possible experience for Liminal's users.You are not just an employee, but a stakeholder in Liminal's success.Your commitment, insights, and most of all abilities will earn you a permanent place within our mission and a true stake in our success.Your chance to prove yourself at LIMINAL starts now!         
     
         The user will send 3 types of requests:
              1) Ask about a historical event
@@ -57,16 +56,16 @@ def get_user_session_context(user_id, session_id):
     if user_document:
         for session in user_document.get('sessions', []):
             if session['session_id'] == session_id:
-                return session['context']
-    return json.loads(json.dumps(context_org))
+                return session['context'], session.get('history', {})
+    return json.loads(json.dumps(context_org)), {}
 
-def save_user_session_context(user_id, session_id, context):
+def save_user_session_context(user_id, session_id, context, history):
     if collection.find_one({"user_id": user_id, "sessions.session_id": session_id}):
         collection.update_one({"user_id": user_id, "sessions.session_id": session_id},
-                              {"$set": {"sessions.$.context": context}})
+                              {"$set": {"sessions.$.context": context, "sessions.$.history": history}})
     else:
         collection.update_one({"user_id": user_id},
-                              {"$push": {"sessions": {"session_id": session_id, "context": context}}},
+                              {"$push": {"sessions": {"session_id": session_id, "context": context, "history": history}}},
                               upsert=True)
 
 
@@ -159,7 +158,6 @@ def transcription(audio_file):
     transcription = client.audio.transcriptions.create(model="whisper-1", file=open(audio_file, 'rb'), response_format="text")
     return transcription
 
-history = {}
 
 def process_person(response_key, person_data, history):
     if person_data in history:
@@ -197,8 +195,9 @@ def process_data(data, history):
 
     return responses
 
+history = {}
 def chat(prompt, user_id, session_id):
-    context = get_user_session_context(user_id, session_id)
+    context, history = get_user_session_context(user_id, session_id)
     context.append({"role": "user", "content": prompt})
     completion = client.chat.completions.create(
         model="gpt-4-0125-preview",
@@ -208,13 +207,13 @@ def chat(prompt, user_id, session_id):
     )
     result = completion.choices[0].message.content
     context.append({"role": "assistant", "content": result})
-    save_user_session_context(user_id, session_id, context)
     data = json.loads(result)
-    responses=process_data(data=data,history=history)    
+    responses=process_data(data=data,history=history)
+    save_user_session_context(user_id, session_id, context,history=history)
+    print("history: ", history)
     if not responses:
         return "No response available."
     else:
-
         return responses
 
 if __name__ == "__main__":
@@ -222,7 +221,7 @@ if __name__ == "__main__":
         user_input = input("You: ")
         if user_input.lower() in ["quit", "exit", "bye"]:
             break
-        responses = chat(user_input,"testuser","session321")
+        responses = chat(user_input,"testuser","session3213")
         if responses[0]:
             print(f"{responses[1]}: {responses[0]}")
             audio_1,_ = responses[2]

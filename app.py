@@ -25,7 +25,7 @@ def autoplay_audio(audio_bytes):
 
 def handle_text_input(user_input):
     start_time = time.time()
-    response_data = chat(user_input,"testuser_streamlit","session3")
+    response_data = chat(user_input,"testuser_streamlit","session4")
     end_time = time.time()
     execution_time = end_time - start_time
     print("Time taken: ", execution_time)
